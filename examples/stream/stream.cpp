@@ -6,12 +6,14 @@
 #include "common.h"
 #include "whisper.h"
 
+#include <iostream>
 #include <cassert>
 #include <cstdio>
 #include <string>
 #include <thread>
 #include <vector>
 #include <fstream>
+#include <chrono>
 
 
 //  500 -> 00:05.000
@@ -207,7 +209,7 @@ int main(int argc, char ** argv) {
 
     std::ofstream fout;
     if (params.fname_out.length() > 0) {
-        fout.open(params.fname_out);
+        fout.open(params.fname_out, std::ofstream::app);
         if (!fout.is_open()) {
             fprintf(stderr, "%s: failed to open output file '%s'!\n", __func__, params.fname_out.c_str());
             return 1;
@@ -354,12 +356,15 @@ int main(int argc, char ** argv) {
                 const int n_segments = whisper_full_n_segments(ctx);
                 for (int i = 0; i < n_segments; ++i) {
                     const char * text = whisper_full_get_segment_text(ctx, i);
-
+                    std::cout << i << ": " << text << std::endl;
                     if (params.no_timestamps) {
                         printf("%s", text);
                         fflush(stdout);
 
-                        if (params.fname_out.length() > 0) {
+                        if (fout.is_open()) {
+                            auto now = std::chrono::system_clock::now();
+                            auto timestamp = std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()).count();
+                            fout << timestamp;
                             fout << text;
                         }
                     } else {
@@ -377,13 +382,13 @@ int main(int argc, char ** argv) {
                         printf("%s", output.c_str());
                         fflush(stdout);
 
-                        if (params.fname_out.length() > 0) {
+                        if (fout.is_open()) {
                             fout << output;
                         }
                     }
                 }
 
-                if (params.fname_out.length() > 0) {
+                if (fout.is_open()) {
                     fout << std::endl;
                 }
 
